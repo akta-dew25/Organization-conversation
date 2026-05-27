@@ -6,6 +6,11 @@ const initialState = {
     addMembers: false,
     userProfile: false,
     settings: false,
+    addMember: false,
+  },
+  modalMeta: {
+    createChannel: {},
+    addMember: {},
   },
   sidebarOpen: true,
   notifications: [],
@@ -16,10 +21,25 @@ const uiSlice = createSlice({
   initialState,
   reducers: {
     openModal: (state, action) => {
-      state.modals[action.payload] = true;
+      if (typeof action.payload === "string") {
+        state.modals[action.payload] = true;
+        return;
+      }
+
+      const { modal, meta } = action.payload;
+      if (modal) {
+        state.modals[modal] = true;
+        state.modalMeta[modal] = {
+          ...state.modalMeta[modal],
+          ...meta,
+        };
+      }
     },
     closeModal: (state, action) => {
       state.modals[action.payload] = false;
+      if (state.modalMeta[action.payload]) {
+        state.modalMeta[action.payload] = {};
+      }
     },
     toggleSidebar: (state) => {
       state.sidebarOpen = !state.sidebarOpen;

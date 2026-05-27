@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import apiClient from "../api/apiClient.js";
 import Modal from "../components/Modal.jsx";
 import { Plus, Search, Edit3, Trash2, CheckCircle } from "lucide-react";
+import authApi from "../api/authApi.js";
 
 const initialUsers = [];
 const roles = ["admin", "user"];
@@ -11,7 +11,7 @@ const normalizeUser = (user = {}) => ({
   id: user.userId || user.id || Date.now(),
   name: user.name || "",
   email: user.email || "",
-  role: (user.role || "member").toLowerCase(),
+  role: (user.role || "user").toLowerCase(),
   isActive: user.role === "Admin" ? "Active" : user.isActive,
 
   joined:
@@ -52,7 +52,7 @@ export default function UsersView() {
     setError("");
 
     try {
-      const { data } = await apiClient.get("/users");
+      const { data } = await authApi.get("/users");
       const normalized = (data.users || []).map(normalizeUser);
       console.log({ data });
       setUsers(normalized);
@@ -69,7 +69,7 @@ export default function UsersView() {
 
   const fetchUserDetails = async (id) => {
     try {
-      const { data } = await apiClient.get(`/users/${id}`);
+      const { data } = await authApi.get(`/users/${id}`);
       return normalizeUser(data.user || data);
     } catch (err) {
       setError(
@@ -141,7 +141,7 @@ export default function UsersView() {
 
     try {
       if (modalMode === "edit" && activeUser) {
-        const { data } = await apiClient.put(`/users/${activeUser.id}`, {
+        const { data } = await authApi.put(`/users/${activeUser.id}`, {
           name: formValues.name,
           email: formValues.email,
           role: formValues.role,
@@ -161,8 +161,9 @@ export default function UsersView() {
             user.id === activeUser.id ? { ...user, ...updatedUser } : user,
           ),
         );
+        fetchUsers();
       } else {
-        const { data } = await apiClient.post("/users", {
+        const { data } = await authApi.post("/users", {
           name: formValues.name,
           email: formValues.email,
           role: formValues.role,
@@ -183,6 +184,7 @@ export default function UsersView() {
 
         setUsers((prev) => [createdUser, ...prev]);
       }
+      fetchUsers();
 
       setIsModalOpen(false);
     } catch (err) {
@@ -208,7 +210,7 @@ export default function UsersView() {
     setError("");
 
     try {
-      await apiClient.delete(`/users/${userToDelete.id}`);
+      await authApi.delete(`/users/${userToDelete.id}`);
       setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);

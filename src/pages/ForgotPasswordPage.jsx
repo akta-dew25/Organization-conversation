@@ -1,7 +1,7 @@
 import { useState } from "react";
-import apiClient from "../api/apiClient.js";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, Lock } from "lucide-react";
+import authApi from "../api/authApi.js";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
     setStatus("");
 
     try {
-      const { data } = await apiClient.post("/auth/forgot-password", {
+      const { data } = await authApi.post("/auth/forgot-password", {
         email,
         password: newPassword,
       });

@@ -29,7 +29,14 @@ export default function GroupsView() {
               <Users className="w-5 h-5" /> Groups
             </h2>
             <button
-              onClick={() => dispatch(openModal("createChannel"))}
+              onClick={() =>
+                dispatch(
+                  openModal({
+                    modal: "createChannel",
+                    meta: { groupType: "group" },
+                  }),
+                )
+              }
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               title="Create group"
             >

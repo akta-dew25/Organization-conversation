@@ -1,42 +1,65 @@
-import { useEffect, useState } from "react";
+// Sidebar.jsx
+
+import { useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   Home,
-  MessageCircle,
   Users,
-  Settings,
   LogOut,
   ChevronDown,
   Plus,
+  Hash,
+  Lock,
+  MessageCircle,
 } from "lucide-react";
+
 import { logout } from "../redux/slices/authSlice.js";
 import { openModal, setSidebarOpen } from "../redux/slices/uiSlice.js";
 import { selectChannel } from "../redux/slices/channelsSlice.js";
 import { tokenService } from "../services/tokenService.js";
-import apiClient from "../api/apiClient.js";
+import chatApi from "../api/chatApi.js";
 
 export default function Sidebar({ isOpen }) {
   const [orgData, setOrgData] = useState(null);
+
+  /**
+   * CHAT GROUP STATES
+   */
+  const [chatGroups, setChatGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+
+  /**
+   * SHOW MORE STATES
+   */
+  const [channelLimit, setChannelLimit] = useState(5);
+  const [groupLimit, setGroupLimit] = useState(5);
+  const [personalLimit, setPersonalLimit] = useState(5);
+
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const currentPath = location.pathname;
+
   const user = useSelector((state) => state.auth.user);
   const organization = useSelector((state) => state.auth.organization);
-  const channels = useSelector((state) => state.channels.channels);
-  const selectedChannelId = useSelector(
-    (state) => state.channels.selectedChannelId,
-  );
 
-  // Fetch organization details from API
+  /**
+   * FETCH ORGANIZATION
+   */
   useEffect(() => {
     const fetchOrgDetails = async () => {
       try {
         const accessToken = tokenService.getAccessToken();
+
         if (!accessToken) return;
 
         const decodedToken = tokenService.decodeToken(accessToken);
+
         const orgId = decodedToken?.orgId;
 
         if (!orgId) return;
@@ -49,47 +72,120 @@ export default function Sidebar({ isOpen }) {
             },
           },
         );
+
         setOrgData(data.org || data);
       } catch (err) {
-        console.error("Failed to fetch organization details:", err);
+        console.log(err);
       }
     };
 
     fetchOrgDetails();
   }, []);
 
-  const handleLogout = () => {
-    tokenService.clearTokens();
-    dispatch(logout());
-    navigate("/login");
+  /**
+   * FETCH CHAT GROUPS
+   */
+  useEffect(() => {
+    const fetchChatGroups = async () => {
+      try {
+        setLoadingGroups(true);
+
+        // const accessToken = tokenService.getAccessToken();
+
+        const { data } = await chatApi.get("/chat-group");
+        setChatGroups(data?.data || []);
+      } catch (error) {
+        console.log("GET CHAT GROUP ERROR", error);
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
+    fetchChatGroups();
+  }, []);
+
+  /**
+   * FILTER GROUPS
+   */
+  const channels = useMemo(() => {
+    return chatGroups.filter((item) => item.groupType === "channel");
+  }, [chatGroups]);
+
+  const groups = useMemo(() => {
+    return chatGroups.filter((item) => item.groupType === "group");
+  }, [chatGroups]);
+
+  const personalChats = useMemo(() => {
+    return chatGroups.filter((item) => item.groupType === "personal");
+  }, [chatGroups]);
+
+  /**
+   * ACTIVE MENU
+   */
+  const isSidebarMenuActive = (path) => {
+    if (path === "/dashboard") {
+      return currentPath === "/dashboard";
+    }
+
+    return currentPath.startsWith(path);
   };
 
-  const handleNavigate = (path, id = null) => {
-    if (id) {
-      dispatch(selectChannel(id));
-    }
+  /**
+   * ACTIVE CHAT
+   */
+  const isChatActive = (groupId) => {
+    return currentPath === `/dashboard/chat/${groupId}`;
+  };
+
+  /**
+   * NAVIGATE
+   */
+  const handleNavigate = (path) => {
     navigate(path);
+  };
+
+  /**
+   * OPEN CHAT
+   */
+  const handleOpenChat = (group) => {
+    dispatch(selectChannel(group.groupId));
+
+    navigate(`/dashboard/chat/${group.groupId}`);
+  };
+
+  /**
+   * LOGOUT
+   */
+  const handleLogout = () => {
+    tokenService.clearTokens();
+
+    dispatch(logout());
+
+    navigate("/login");
   };
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* MOBILE OVERLAY */}
+
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-10 lg:hidden"
           onClick={() => dispatch(setSidebarOpen(false))}
         />
       )}
 
-      {/* Sidebar */}
+      {/* SIDEBAR */}
+
       <div
         className={`fixed lg:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col transform transition-transform duration-300 z-20 ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Header */}
+        {/* HEADER */}
+
         <div className="p-4 border-b border-gray-700 relative">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3">
             {orgData?.logo ? (
               <img
                 src={orgData.logo}
@@ -98,187 +194,269 @@ export default function Sidebar({ isOpen }) {
               />
             ) : (
               <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center font-bold">
-                {orgData?.name?.charAt(0) ||
-                  organization?.name?.charAt(0) ||
-                  "D"}
+                {orgData?.name?.charAt(0) || "D"}
               </div>
             )}
 
             <div className="min-w-0">
               <h1 className="font-bold text-sm truncate">
-                {orgData?.name || organization?.name || "DevCrew"}
+                {orgData?.name || "Workspace"}
               </h1>
+
               <p className="text-xs text-gray-400 truncate">
-                {orgData?.domain || organization?.slug || "devcrew"}
+                {orgData?.domain}
               </p>
             </div>
 
             <button
               onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-              className="ml-auto flex-shrink-0 p-1 hover:bg-gray-700 rounded transition-colors"
+              className="ml-auto p-1 hover:bg-gray-700 rounded"
             >
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${showOrgDropdown ? "rotate-180" : ""}`}
-              />
+              <ChevronDown className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Organization Dropdown (absolutely positioned so it doesn't push content) */}
+          {/* DROPDOWN */}
+
           {showOrgDropdown && (
-            <div className="absolute right-1 top-full mt-4 mr-4 w-64 p-3 bg-gray-800 rounded-lg border border-gray-600 space-y-2 text-xs z-30 shadow-lg">
-              <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wide">
-                  Organization Details
+            <div className="absolute top-full right-4 mt-2 w-60 bg-gray-800 border border-gray-700 rounded-xl p-4 z-50 shadow-xl">
+              <p className="text-xs text-gray-400 mb-2">Organization Details</p>
+
+              <div className="space-y-2 text-sm">
+                <p>
+                  <span className="text-gray-400">Name:</span> {orgData?.name}
+                </p>
+
+                <p>
+                  <span className="text-gray-400">Domain:</span>{" "}
+                  {orgData?.domain}
                 </p>
               </div>
-
-              <div className="border-t border-gray-600 pt-2">
-                <p className="text-gray-300">
-                  <span className="text-gray-500">Name:</span>{" "}
-                  {orgData?.name || organization?.name || "N/A"}
-                </p>
-                <p className="text-gray-300 mt-1">
-                  <span className="text-gray-500">Domain:</span>{" "}
-                  {orgData?.domain || organization?.slug || "N/A"}
-                </p>
-              </div>
-
-              {orgData?.isActive !== undefined && (
-                <div className="border-t border-gray-600 pt-2">
-                  <p className="text-gray-300">
-                    <span className="text-gray-500">Status:</span>{" "}
-                    <span
-                      className={`inline-block px-2 py-1 rounded text-xs font-semibold ${orgData?.isActive ? "bg-green-900 text-green-200" : "bg-red-900 text-red-200"}`}
-                    >
-                      {orgData?.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </p>
-                </div>
-              )}
-
-              {orgData?.createdAt && (
-                <div className="border-t border-gray-600 pt-2">
-                  <p className="text-gray-300">
-                    <span className="text-gray-500">Created:</span>{" "}
-                    {new Date(orgData.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Channels Section */}
+        {/* BODY */}
+
         <div className="flex-1 overflow-y-auto">
-          {/* Quick Access */}
+          {/* MENU */}
+
           <div className="px-4 py-4">
             <button
               onClick={() => handleNavigate("/dashboard")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left mb-2"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg mb-2 ${
+                isSidebarMenuActive("/dashboard")
+                  ? "bg-purple-600"
+                  : "hover:bg-gray-700"
+              }`}
             >
               <Home className="w-5 h-5" />
-              <span>Home</span>
+              Home
             </button>
-            <button
-              onClick={() => handleNavigate("/dashboard/direct-messages")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left mb-2"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>Direct Messages</span>
-            </button>
+
             <button
               onClick={() => handleNavigate("/dashboard/users")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left mb-4"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg ${
+                isSidebarMenuActive("/dashboard/users")
+                  ? "bg-purple-600"
+                  : "hover:bg-gray-700"
+              }`}
             >
               <Users className="w-5 h-5" />
-              <span>Users</span>
+              Users
             </button>
           </div>
 
-          {/* Channels */}
-          <div>
-            <div className="px-4 py-2 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+          {/* CHANNELS */}
+
+          <div className="mt-2">
+            <div className="flex items-center justify-between px-4 py-2">
+              <h3 className="text-xs uppercase text-gray-400 font-semibold">
                 Channels
               </h3>
+
               <button
-                onClick={() => dispatch(openModal("createChannel"))}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                onClick={() =>
+                  dispatch(
+                    openModal({
+                      modal: "createChannel",
+                      meta: {
+                        groupType: "channel",
+                      },
+                    }),
+                  )
+                }
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-1 px-4">
-              {channels.map((channel) => (
+
+            <div className="space-y-1 px-2">
+              {channels.slice(0, channelLimit).map((channel) => (
                 <button
-                  key={channel.id}
-                  onClick={() =>
-                    handleNavigate(
-                      `/dashboard/channel/${channel.id}`,
-                      channel.id,
-                    )
-                  }
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-left ${selectedChannelId === channel.id ? "bg-purple-600 text-white" : "text-gray-300 hover:bg-gray-700"}`}
+                  key={channel.groupId}
+                  onClick={() => handleOpenChat(channel)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left ${
+                    isChatActive(channel.groupId)
+                      ? "bg-purple-600"
+                      : "hover:bg-gray-700"
+                  }`}
                 >
-                  <span className="text-lg">#{channel.icon}</span>
+                  {channel.privacyType === "private" ? (
+                    <Lock className="w-4 h-4" />
+                  ) : (
+                    <Hash className="w-4 h-4" />
+                  )}
+
                   <span className="truncate">{channel.name}</span>
                 </button>
               ))}
+
+              {channels.length > channelLimit && (
+                <button
+                  onClick={() => setChannelLimit((prev) => prev + 5)}
+                  className="text-xs text-purple-300 px-3 py-1 hover:text-white"
+                >
+                  Show More
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Groups */}
-          <div>
-            <div className="px-4 py-2 mt-4 flex items-center justify-between">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+          {/* GROUPS */}
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between px-4 py-2">
+              <h3 className="text-xs uppercase text-gray-400 font-semibold">
                 Groups
               </h3>
+
               <button
-                onClick={() => dispatch(openModal("createChannel"))}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                onClick={() =>
+                  dispatch(
+                    openModal({
+                      modal: "createChannel",
+                      meta: {
+                        groupType: "group",
+                      },
+                    }),
+                  )
+                }
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-1 px-4">
-              <button
-                onClick={() => handleNavigate("/dashboard/groups")}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left text-gray-300"
-              >
-                <Users className="w-5 h-5" />
-                <span>Browse All</span>
-              </button>
+
+            <div className="space-y-1 px-2">
+              {groups.slice(0, groupLimit).map((group) => (
+                <button
+                  key={group.groupId}
+                  onClick={() => handleOpenChat(group)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left ${
+                    isChatActive(group.groupId)
+                      ? "bg-purple-600"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+
+                  <span className="truncate">{group.name}</span>
+                </button>
+              ))}
+
+              {groups.length > groupLimit && (
+                <button
+                  onClick={() => setGroupLimit((prev) => prev + 5)}
+                  className="text-xs text-purple-300 px-3 py-1 hover:text-white"
+                >
+                  Show More
+                </button>
+              )}
             </div>
           </div>
+
+          {/* DIRECT MESSAGES */}
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between px-4 py-2">
+              <h3 className="text-xs uppercase text-gray-400 font-semibold">
+                Direct Messages
+              </h3>
+
+              <button
+                onClick={() =>
+                  dispatch(
+                    openModal({
+                      modal: "createChannel",
+                      meta: {
+                        groupType: "personal",
+                      },
+                    }),
+                  )
+                }
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1 px-2">
+              {personalChats.slice(0, personalLimit).map((chat) => (
+                <button
+                  key={chat.groupId}
+                  onClick={() => handleOpenChat(chat)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left ${
+                    isChatActive(chat.groupId)
+                      ? "bg-purple-600"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+
+                  <span className="truncate">{chat.name}</span>
+                </button>
+              ))}
+
+              {personalChats.length > personalLimit && (
+                <button
+                  onClick={() => setPersonalLimit((prev) => prev + 5)}
+                  className="text-xs text-purple-300 px-3 py-1 hover:text-white"
+                >
+                  Show More
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* LOADING */}
+
+          {loadingGroups && (
+            <div className="text-center text-sm text-gray-400 py-4">
+              Loading chats...
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-700 p-4 space-y-2">
-          {/* <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left text-gray-300">
-            <Settings className="w-5 h-5" />
-            <span className="text-sm">Settings</span>
-          </button> */}
+        {/* FOOTER */}
+
+        <div className="border-t border-gray-700 p-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-600 hover:text-white transition-colors text-left text-gray-300"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-600 transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span className="text-sm">Logout</span>
+            Logout
           </button>
 
-          {/* User Profile */}
-          <div className="flex items-center gap-3 px-3 py-3 mt-4 border-t border-gray-700">
+          <div className="flex items-center gap-3 mt-4 border-t border-gray-700 pt-4">
             <img
               src={user?.avatar || "https://i.pravatar.cc/150?img=1"}
               alt={user?.name}
-              className="w-8 h-8 rounded-full"
+              className="w-9 h-9 rounded-full"
             />
-            <div className="flex-1 min-w-0">
+
+            <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
+
               <p className="text-xs text-gray-400 truncate">{user?.email}</p>
             </div>
           </div>

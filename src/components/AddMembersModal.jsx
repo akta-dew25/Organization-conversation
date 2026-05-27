@@ -1,149 +1,140 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { closeModal } from "../redux/slices/uiSlice.js";
-import { addMemberToGroup } from "../redux/slices/groupsSlice";
 import Modal from "./Modal";
-import { Search, Check } from "lucide-react";
+import { closeModal } from "../redux/slices/uiSlice";
+import authApi from "../api/authApi.js";
+import chatApi from "../api/chatApi.js";
 
-const AVAILABLE_USERS = [
-  {
-    id: 1,
-    name: "Pooja Singh",
-    email: "pooja@example.com",
-    avatar: "https://i.pravatar.cc/150?img=1",
-  },
-  {
-    id: 2,
-    name: "Arun Sharma",
-    email: "arun@example.com",
-    avatar: "https://i.pravatar.cc/150?img=2",
-  },
-  {
-    id: 3,
-    name: "Jaskaran Singh",
-    email: "jaskaran@example.com",
-    avatar: "https://i.pravatar.cc/150?img=3",
-  },
-  {
-    id: 4,
-    name: "Ekta Patel",
-    email: "ekta@example.com",
-    avatar: "https://i.pravatar.cc/150?img=4",
-  },
-  {
-    id: 5,
-    name: "Nikhil Verma",
-    email: "nikhil@example.com",
-    avatar: "https://i.pravatar.cc/150?img=5",
-  },
-];
-
-export default function AddMembersModal() {
+export default function AddMemberModal() {
   const dispatch = useDispatch();
-  const isOpen = useSelector((state) => state.ui.modals.addMembers);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMembers, setSelectedMembers] = useState([]);
 
-  const filteredUsers = AVAILABLE_USERS.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const isOpen = useSelector((state) => state.ui.modals.addMember);
+
+  const modalMeta = useSelector((state) => state.ui.modalMeta.addMember || {});
+
+  const [users, setUsers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data } = await authApi.get("/users");
+
+        setUsers(data?.users || data || []);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    if (isOpen) {
+      fetchUsers();
+    }
+  }, [isOpen]);
 
   const toggleMember = (user) => {
-    setSelectedMembers((prev) =>
-      prev.find((m) => m.id === user.id)
-        ? prev.filter((m) => m.id !== user.id)
-        : [...prev, user],
-    );
+    const exists = selectedMembers.find((item) => item.userId === user.userId);
+
+    if (exists) {
+      setSelectedMembers((prev) =>
+        prev.filter((item) => item.userId !== user.userId),
+      );
+    } else {
+      setSelectedMembers((prev) => [...prev, user]);
+    }
   };
 
-  const handleAddMembers = () => {
-    selectedMembers.forEach((member) => {
-      // dispatch(addMemberToGroup({ groupId, member }))
-    });
-    setSelectedMembers([]);
-    dispatch(closeModal("addMembers"));
+  const handleAddMembers = async () => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        members: selectedMembers.map((member) => ({
+          userName: member.name,
+          userId: member.userId,
+        })),
+      };
+
+      await chatApi.patch(
+        `/chat-group/${modalMeta.groupId}/add-members`,
+        payload,
+      );
+
+      /**
+       * REFRESH GROUP DATA
+       */
+      if (modalMeta?.refreshGroup) {
+        await modalMeta.refreshGroup();
+      }
+
+      setSelectedMembers([]);
+
+      dispatch(closeModal("addMember"));
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => dispatch(closeModal("addMembers"))}
+      onClose={() => dispatch(closeModal("addMember"))}
       title="Add Members"
-      size="md"
+      size="lg"
     >
-      <div className="space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="input-base pl-10 w-full"
-          />
-        </div>
+      <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        {users.map((user) => {
+          const isSelected = selectedMembers.some(
+            (member) => member.userId === user.userId,
+          );
 
-        {/* Users List */}
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {filteredUsers.map((user) => {
-            const isSelected = selectedMembers.find((m) => m.id === user.id);
-            return (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => toggleMember(user)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                  isSelected
-                    ? "border-primary bg-purple-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-10 h-10 rounded-full"
-                />
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-gray-800">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
-                {isSelected && <Check className="w-5 h-5 text-primary" />}
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={user.userId}
+              onClick={() => toggleMember(user)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                isSelected
+                  ? "border-purple-600 bg-purple-50"
+                  : "border-gray-200"
+              }`}
+            >
+              <img
+                src="https://i.pravatar.cc/150?img=1"
+                alt={user.name}
+                className="w-10 h-10 rounded-full"
+              />
 
-        {/* Selected Count */}
-        {selectedMembers.length > 0 && (
-          <div className="p-3 bg-purple-50 rounded-lg">
-            <p className="text-sm text-purple-700">
-              {selectedMembers.length} member
-              {selectedMembers.length > 1 ? "s" : ""} selected
-            </p>
-          </div>
-        )}
+              <div className="flex-1 text-left">
+                <p className="font-medium text-gray-800">{user.name}</p>
 
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => dispatch(closeModal("addMembers"))}
-            className="flex-1 btn-secondary py-2"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleAddMembers}
-            disabled={selectedMembers.length === 0}
-            className="flex-1 btn-primary py-2 disabled:opacity-50"
-          >
-            Add Members
-          </button>
-        </div>
+                <p className="text-xs text-gray-500">{user.email}</p>
+              </div>
+
+              {isSelected && (
+                <span className="text-purple-600 font-semibold">Selected</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          onClick={() => dispatch(closeModal("addMember"))}
+          className="flex-1 py-2 rounded-lg border border-gray-300"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleAddMembers}
+          disabled={loading}
+          className="flex-1 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50"
+        >
+          {loading ? "Adding..." : "Add Members"}
+        </button>
       </div>
     </Modal>
   );

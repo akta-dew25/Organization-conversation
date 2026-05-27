@@ -58,7 +58,7 @@ export default function DashboardLayout() {
           {/* Routes */}
           <Routes>
             <Route path="/" element={<ChannelView />} />
-            <Route path="/channel/:id" element={<ChannelView />} />
+            <Route path="/chat/:id" element={<ChannelView />} />
             <Route path="/direct-messages" element={<DirectMessagesView />} />
             <Route path="/groups" element={<GroupsView />} />
             <Route path="/users" element={<UsersView />} />

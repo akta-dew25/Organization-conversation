@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
-import apiClient from "../api/apiClient.js";
 import { loginSuccess } from "../redux/slices/authSlice.js";
 import { tokenService } from "../services/tokenService.js";
 import { Mail, Lock, Check } from "lucide-react";
+import authApi from "../api/authApi.js";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -35,7 +35,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const { data } = await apiClient.post("/auth/login", {
+      const { data } = await authApi.post("/auth/login", {
         email: formData.email,
         password: formData.password,
       });

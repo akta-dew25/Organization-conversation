@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
-import apiClient from "../api/apiClient.js";
 import { registerSuccess } from "../redux/slices/authSlice.js";
 import {
   ArrowRight,
@@ -13,6 +12,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import authApi from "../api/authApi.js";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
@@ -89,7 +89,7 @@ export default function RegisterPage() {
         },
       };
 
-      const { data } = await apiClient.post("/auth/register", payload);
+      const { data } = await authApi.post("/auth/register", payload);
 
       dispatch(
         registerSuccess({

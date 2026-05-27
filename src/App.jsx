@@ -10,6 +10,7 @@ import DashboardLayout from "./pages/DashboardLayout.jsx";
 import NotificationCenter from "./components/NotificationCenter.jsx";
 import CreateChannelModal from "./components/CreateChannelModal.jsx";
 import AddMembersModal from "./components/AddMembersModal.jsx";
+import { socket } from "./socket/socket.js";
 
 function App() {
   const dispatch = useDispatch();
@@ -41,6 +42,21 @@ function App() {
     };
 
     initializeAuth();
+    const token = tokenService.getAccessToken();
+
+    if (token) {
+      const decoded = tokenService.decodeToken(token);
+
+      socket.connect();
+
+      socket.emit("join-user", {
+        userId: decoded.userId,
+      });
+    }
+
+    return () => {
+      socket.disconnect();
+    };
   }, [dispatch]);
 
   return (
