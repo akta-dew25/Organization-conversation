@@ -1,44 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  groups: [
-    {
-      id: 1,
-      name: "Frontend Team",
-      members: [
-        {
-          id: 1,
-          name: "Pooja Singh",
-          avatar: "https://i.pravatar.cc/150?img=1",
-        },
-        {
-          id: 2,
-          name: "Arun Sharma",
-          avatar: "https://i.pravatar.cc/150?img=2",
-        },
-      ],
-      lastMessage: "Message preview here...",
-      timestamp: new Date(),
-    },
-    {
-      id: 2,
-      name: "Backend Team",
-      members: [
-        {
-          id: 3,
-          name: "Jaskaran Singh",
-          avatar: "https://i.pravatar.cc/150?img=3",
-        },
-        {
-          id: 4,
-          name: "Ekta Patel",
-          avatar: "https://i.pravatar.cc/150?img=4",
-        },
-      ],
-      lastMessage: "Working on API integration",
-      timestamp: new Date(Date.now() - 3600000),
-    },
-  ],
+  groups: [],
   selectedGroupId: null,
   loading: false,
   error: null,
@@ -52,7 +15,7 @@ const groupsSlice = createSlice({
       state.groups = action.payload;
     },
     addGroup: (state, action) => {
-      state.groups.push(action.payload);
+      state.groups.unshift(action.payload);
     },
     deleteGroup: (state, action) => {
       state.groups = state.groups.filter((g) => g.id !== action.payload);

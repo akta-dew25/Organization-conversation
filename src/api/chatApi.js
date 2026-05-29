@@ -1,24 +1,10 @@
 import axios from "axios";
-
-import {
-  requestInterceptor,
-  responseSuccessInterceptor,
-  responseErrorInterceptor,
-} from "./interceptor.js";
+import { setupInterceptors } from "./interceptor";
 
 const chatApi = axios.create({
   baseURL: "http://localhost:8000/api/v1",
-
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-chatApi.interceptors.request.use(requestInterceptor);
-
-chatApi.interceptors.response.use(
-  responseSuccessInterceptor,
-  responseErrorInterceptor,
-);
+setupInterceptors(chatApi);
 
 export default chatApi;

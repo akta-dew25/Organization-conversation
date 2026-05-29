@@ -90,15 +90,15 @@ export default function ChannelHeader({ channel, members, refreshGroup }) {
                   className="flex items-center gap-3 p-3 border rounded-xl"
                 >
                   <img
-                    src={member.avatar || "https://i.pravatar.cc/150?img=1"}
-                    alt={member.name}
+                    src={member?.avatar || "https://i.pravatar.cc/150?img=1"}
+                    alt={member?.name}
                     className="w-10 h-10 rounded-full"
                   />
 
                   <div className="flex-1">
-                    <p className="font-medium text-gray-800">{member.name}</p>
+                    <p className="font-medium text-gray-800">{member?.name}</p>
 
-                    <p className="text-xs text-gray-500">{member.email}</p>
+                    <p className="text-xs text-gray-500">{member?.email}</p>
                   </div>
                 </div>
               ))

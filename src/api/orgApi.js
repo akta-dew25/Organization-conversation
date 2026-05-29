@@ -1,24 +1,10 @@
 import axios from "axios";
-
-import {
-  requestInterceptor,
-  responseSuccessInterceptor,
-  responseErrorInterceptor,
-} from "./interceptor.js";
+import { setupInterceptors } from "./interceptor";
 
 const orgApi = axios.create({
   baseURL: "http://localhost:5000/api/v1",
-
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
-orgApi.interceptors.request.use(requestInterceptor);
-
-orgApi.interceptors.response.use(
-  responseSuccessInterceptor,
-  responseErrorInterceptor,
-);
+setupInterceptors(orgApi);
 
 export default orgApi;

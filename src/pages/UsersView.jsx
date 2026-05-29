@@ -46,6 +46,7 @@ export default function UsersView() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -54,7 +55,6 @@ export default function UsersView() {
     try {
       const { data } = await authApi.get("/users");
       const normalized = (data.users || []).map(normalizeUser);
-      console.log({ data });
       setUsers(normalized);
     } catch (err) {
       setError(
@@ -136,10 +136,11 @@ export default function UsersView() {
       return;
     }
 
-    setLoading(true);
     setError("");
 
     try {
+      setLoading(true);
+
       if (modalMode === "edit" && activeUser) {
         const { data } = await authApi.put(`/users/${activeUser.id}`, {
           name: formValues.name,
@@ -163,12 +164,16 @@ export default function UsersView() {
         );
         fetchUsers();
       } else {
+        setLoading(true);
+
         const { data } = await authApi.post("/users", {
           name: formValues.name,
           email: formValues.email,
           role: formValues.role,
           isActive: formValues.isActive,
         });
+        alert(data.emailMsg);
+        setSuccess(data.message);
 
         const createdUser = normalizeUser(
           data.user ||
@@ -183,6 +188,9 @@ export default function UsersView() {
         );
 
         setUsers((prev) => [createdUser, ...prev]);
+        setTimeout(() => {
+          setSuccess("");
+        }, 2000);
       }
       fetchUsers();
 
@@ -214,6 +222,7 @@ export default function UsersView() {
       setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);
+      dispatch(removeDeletedUser(userToDelete.id));
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -247,13 +256,16 @@ export default function UsersView() {
           Add User
         </button>
       </div>
-
       {error && (
         <div className="mb-5 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           {error}
         </div>
+      )}{" "}
+      {success && (
+        <div className="mb-4 bg-green-50 border border-green-200 text-green-600 text-sm px-4 py-3 rounded-lg">
+          {success}
+        </div>
       )}
-
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5">
           <div className="relative w-full md:w-96">
@@ -353,99 +365,103 @@ export default function UsersView() {
           </div>
         )}
       </div>
-
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={modalMode === "edit" ? "Edit user" : "Add user"}
         size="lg"
       >
-        <div className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Full name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formValues.name}
-                onChange={handleFormChange}
-                placeholder="Enter full name"
-                className="input-base w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formValues.email}
-                onChange={handleFormChange}
-                placeholder="Enter email"
-                className="input-base w-full"
-              />
-            </div>
+        {loading ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+            Loading users...
           </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Full name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formValues.name}
+                  onChange={handleFormChange}
+                  placeholder="Enter full name"
+                  className="input-base w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formValues.email}
+                  onChange={handleFormChange}
+                  placeholder="Enter email"
+                  className="input-base w-full"
+                />
+              </div>
+            </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Role
-              </label>
-              <select
-                name="role"
-                value={formValues.role}
-                onChange={handleFormChange}
-                className="input-base w-full"
-              >
-                {roles.map((role) => (
-                  <option key={role} value={role}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </option>
-                ))}
-              </select>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Role
+                </label>
+                <select
+                  name="role"
+                  value={formValues.role}
+                  onChange={handleFormChange}
+                  className="input-base w-full"
+                >
+                  {roles.map((role) => (
+                    <option key={role} value={role}>
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Status
+                </label>
+                <select
+                  name="isActive"
+                  value={formValues.isActive}
+                  onChange={handleFormChange}
+                  className="input-base w-full"
+                >
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Status
-              </label>
-              <select
-                name="isActive"
-                value={formValues.isActive}
-                onChange={handleFormChange}
-                className="input-base w-full"
-              >
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="btn-secondary py-3"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveUser}
-              className="btn-primary py-3"
-            >
-              {modalMode === "edit" ? "Save Changes" : "Create User"}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="btn-secondary py-3"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUser}
+                className="btn-primary py-3"
+              >
+                {modalMode === "edit" ? "Save Changes" : "Create User"}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Modal>
-
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}

@@ -1,16 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  channels: [
-    { id: 1, name: "general", description: "General discussion", icon: "#" },
-    {
-      id: 2,
-      name: "announcements",
-      description: "Important announcements",
-      icon: "#",
-    },
-    { id: 3, name: "random", description: "Off-topic conversation", icon: "#" },
-  ],
+  channels: [],
   selectedChannelId: 1,
   loading: false,
   error: null,
@@ -24,7 +15,8 @@ const channelsSlice = createSlice({
       state.channels = action.payload;
     },
     addChannel: (state, action) => {
-      state.channels.push(action.payload);
+      console.log({ state });
+      state.channels.unshift(action.payload);
     },
     deleteChannel: (state, action) => {
       state.channels = state.channels.filter((c) => c.id !== action.payload);

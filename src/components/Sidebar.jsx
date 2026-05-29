@@ -17,9 +17,11 @@ import {
 
 import { logout } from "../redux/slices/authSlice.js";
 import { openModal, setSidebarOpen } from "../redux/slices/uiSlice.js";
-import { selectChannel } from "../redux/slices/channelsSlice.js";
+import { selectChannel, setChannels } from "../redux/slices/channelsSlice.js";
 import { tokenService } from "../services/tokenService.js";
 import chatApi from "../api/chatApi.js";
+import { setGroups } from "../redux/slices/groupsSlice.js";
+import { setPersonals } from "../redux/slices/personalSlice.js";
 
 export default function Sidebar({ isOpen }) {
   const [orgData, setOrgData] = useState(null);
@@ -27,7 +29,7 @@ export default function Sidebar({ isOpen }) {
   /**
    * CHAT GROUP STATES
    */
-  const [chatGroups, setChatGroups] = useState([]);
+  // const [chatGroups, setChatGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
 
   /**
@@ -46,8 +48,12 @@ export default function Sidebar({ isOpen }) {
   const currentPath = location.pathname;
 
   const user = useSelector((state) => state.auth.user);
-  const organization = useSelector((state) => state.auth.organization);
+  const channels = useSelector((state) => state.channels.channels || []);
 
+  const groups = useSelector((state) => state.groups.groups || []);
+  const personal = useSelector((state) => state.personal.personals || []);
+
+  const organization = useSelector((state) => state.auth.organization);
   /**
    * FETCH ORGANIZATION
    */
@@ -93,7 +99,19 @@ export default function Sidebar({ isOpen }) {
         // const accessToken = tokenService.getAccessToken();
 
         const { data } = await chatApi.get("/chat-group");
-        setChatGroups(data?.data || []);
+        const allGroups = data?.data;
+        dispatch(
+          setChannels(allGroups.filter((item) => item.groupType === "channel")),
+        );
+        dispatch(
+          setGroups(allGroups.filter((item) => item.groupType === "group")),
+        );
+        dispatch(
+          setPersonals(
+            allGroups.filter((item) => item.groupType === "personal"),
+          ),
+        );
+        // setChatGroups(data?.data || []);
       } catch (error) {
         console.log("GET CHAT GROUP ERROR", error);
       } finally {
@@ -102,22 +120,22 @@ export default function Sidebar({ isOpen }) {
     };
 
     fetchChatGroups();
-  }, []);
+  }, [dispatch]);
 
   /**
    * FILTER GROUPS
    */
-  const channels = useMemo(() => {
-    return chatGroups.filter((item) => item.groupType === "channel");
-  }, [chatGroups]);
+  // const channels = useMemo(() => {
+  //   return chatGroups.filter((item) => item.groupType === "channel");
+  // }, [chatGroups]);
 
-  const groups = useMemo(() => {
-    return chatGroups.filter((item) => item.groupType === "group");
-  }, [chatGroups]);
+  // const groups = useMemo(() => {
+  //   return chatGroups.filter((item) => item.groupType === "group");
+  // }, [chatGroups]);
 
-  const personalChats = useMemo(() => {
-    return chatGroups.filter((item) => item.groupType === "personal");
-  }, [chatGroups]);
+  // const personalChats = useMemo(() => {
+  //   return chatGroups.filter((item) => item.groupType === "personal");
+  // }, [chatGroups]);
 
   /**
    * ACTIVE MENU
@@ -400,7 +418,7 @@ export default function Sidebar({ isOpen }) {
             </div>
 
             <div className="space-y-1 px-2">
-              {personalChats.slice(0, personalLimit).map((chat) => (
+              {personal.slice(0, personalLimit).map((chat) => (
                 <button
                   key={chat.groupId}
                   onClick={() => handleOpenChat(chat)}
@@ -416,7 +434,7 @@ export default function Sidebar({ isOpen }) {
                 </button>
               ))}
 
-              {personalChats.length > personalLimit && (
+              {personal.length > personalLimit && (
                 <button
                   onClick={() => setPersonalLimit((prev) => prev + 5)}
                   className="text-xs text-purple-300 px-3 py-1 hover:text-white"

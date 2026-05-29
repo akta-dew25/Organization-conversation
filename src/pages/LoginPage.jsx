@@ -52,25 +52,32 @@ export default function LoginPage() {
       tokenService.setTokens(accessToken, refreshToken);
 
       // Update Redux state using user/org response data
+      const userData = {
+        id: userId,
+        name: data.data.name,
+        email: formData.email,
+        // avatar: data.user?.avatar || "",
+        isActive: data.data.isActive,
+        organization: {
+          id: orgId,
+          name: data.organization?.name || "Organization",
+        },
+      };
+
+      tokenService.setUser(userData);
       dispatch(
         loginSuccess({
-          user: {
-            id: userId,
-            name: data.user?.name || "User",
-            email: data.user?.email || formData.email,
-            avatar: data.user?.avatar || "https://i.pravatar.cc/150?img=1",
-          },
-          organization: {
-            id: orgId,
-            name: data.organization?.name || "Organization",
-            slug: data.organization?.slug || "org",
-          },
+          user: userData,
+          organization: userData.organization,
           accessToken,
           refreshToken,
         }),
       );
-
-      navigate("/dashboard");
+      if (data.data.isActive === "Invited") {
+        navigate("/change-password");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       setError(
         err?.response?.data?.message ||

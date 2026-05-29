@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { closeModal } from "../redux/slices/uiSlice.js";
-import { addChannel } from "../redux/slices/channelsSlice.js";
-import { addGroup } from "../redux/slices/groupsSlice.js";
+import { addChannel, setChannels } from "../redux/slices/channelsSlice.js";
+import { addGroup, setGroups } from "../redux/slices/groupsSlice.js";
 import Modal from "./Modal.jsx";
 import { Lock, Globe } from "lucide-react";
 import authApi from "../api/authApi.js";
 import chatApi from "../api/chatApi.js";
+import { addPersonal, setPersonals } from "../redux/slices/personalSlice.js";
 
 export default function CreateChannelModal() {
   const dispatch = useDispatch();
@@ -25,6 +26,7 @@ export default function CreateChannelModal() {
   const isFixedGroupType = Boolean(modalMeta.groupType);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
 
   useEffect(() => {
@@ -114,6 +116,7 @@ export default function CreateChannelModal() {
     e.preventDefault();
     setError("");
     try {
+      setLoading(true);
       if (formData.groupType === "personal") {
         if (selectedMembers.length !== 1) {
           setError("Personal chat requires exactly one other member.");
@@ -145,35 +148,35 @@ export default function CreateChannelModal() {
         membersIds: selectedMembers.map((member) => member.userId),
       };
 
-      console.log("payload", payload);
-
       /**
        * API CALL
        */
 
-      const { data } = await chatApi.post("/chat-group", payload);
+      const { data: res } = await chatApi.post("/chat-group", payload);
 
-      console.log("response", data);
+      const createGroup = res?.data;
 
-      /**
-       * REDUX UPDATE
-       */
-
-      if (payload.groupType === "channel") {
-        dispatch(addChannel(data.data));
-      } else {
-        dispatch(addGroup(data.data));
+      if (createGroup.data.groupType === "channel") {
+        dispatch(addChannel(createGroup.data));
       }
 
-      /**
-       * CLOSE MODAL
-       */
+      if (createGroup.data.groupType === "group") {
+        dispatch(addGroup(createGroup.data));
+      }
+
+      if (createGroup.data.groupType === "personal") {
+        dispatch(addPersonal(createGroup.data));
+      }
+
+      // CLOSE MODAL
 
       dispatch(closeModal("createChannel"));
     } catch (error) {
       console.log(error);
 
       setError(error?.response?.data?.message || "Failed to create chat group");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -395,8 +398,12 @@ export default function CreateChannelModal() {
           >
             Cancel
           </button>
-          <button type="submit" className="flex-1 btn-primary py-2">
-            Create{" "}
+          <button
+            type="submit"
+            className="flex-1 btn-primary py-2"
+            disabled={loading ? true : false}
+          >
+            {loading ? "Creating..." : "Create"}
             {formData.groupType === "group"
               ? "Group"
               : formData.groupType === "personal"
