@@ -15,6 +15,7 @@ export default function CreateChannelModal() {
   const modalMeta = useSelector(
     (state) => state.ui.modalMeta.createChannel || {},
   );
+  const currentUser = useSelector((state) => state.auth.user);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -48,13 +49,24 @@ export default function CreateChannelModal() {
       setUsersError("");
       setLoadingUsers(true);
       try {
-        // adjust endpoint as needed by your backend
         const { data } = await authApi.get("/users");
-        // assume API returns { users: [...] } or an array
-        const users = data?.users || data || [];
-        const filteredUsers = data?.users.filter(
-          (user) => user.role === "user",
+        const rawUsers = data?.users ?? data ?? [];
+        const users = Array.isArray(rawUsers) ? rawUsers : [];
+
+        const normalizedUsers = users.map((user) => ({
+          ...user,
+          userId: user?.userId ?? user?.id ?? user?._id,
+          name: user?.name ?? user?.userName ?? user?.fullName ?? "Unknown",
+          role: String(user?.role || "").toLowerCase(),
+        }));
+
+        const filteredUsers = normalizedUsers.filter(
+          (user) =>
+            user.userId &&
+            user.userId !== currentUser?.userId &&
+            user.role !== "admin",
         );
+
         if (mounted) setAvailableUsers(filteredUsers);
       } catch (err) {
         if (mounted) setUsersError(err.message || "Failed to load users");
@@ -88,13 +100,18 @@ export default function CreateChannelModal() {
   };
 
   const toggleMember = (user) => {
+    const userId = user.userId ?? user.id ?? user._id;
     const isSelected = selectedMembers.find(
-      (member) => member.userId === user.userId,
+      (member) =>
+        String(member.userId ?? member.id ?? member._id) === String(userId),
     );
 
     if (isSelected) {
       setSelectedMembers((prev) =>
-        prev.filter((member) => member.userId !== user.userId),
+        prev.filter(
+          (member) =>
+            String(member.userId ?? member.id ?? member._id) !== String(userId),
+        ),
       );
       return;
     }
@@ -136,16 +153,23 @@ export default function CreateChannelModal() {
         return;
       }
 
+      const currentUserId =
+        currentUser?.userId || currentUser?.id || currentUser?._id;
+
+      const selectedIds = selectedMembers.map(
+        (member) => member.userId ?? member.id ?? member._id,
+      );
+
+      // Ensure the creator is included in members list so the other user
+      // and the creator both see the personal/group chat in fetch endpoints.
+      const membersIds = Array.from(new Set([currentUserId, ...selectedIds]));
+
       const payload = {
         groupType: formData.groupType.toLowerCase(),
-
         privacyType: formData.privacyType.toLowerCase(),
-
         name: formData.name,
-
         description: formData.description,
-
-        membersIds: selectedMembers.map((member) => member.userId),
+        membersIds,
       };
 
       /**
@@ -165,7 +189,16 @@ export default function CreateChannelModal() {
       }
 
       if (createGroup.data.groupType === "personal") {
-        dispatch(addPersonal(createGroup.data));
+        dispatch(
+          addPersonal({
+            ...createGroup.data,
+            name:
+              createGroup.data.name ||
+              selectedMembers[0]?.name ||
+              currentUser?.name ||
+              "Personal Chat",
+          }),
+        );
       }
 
       // CLOSE MODAL
@@ -345,7 +378,7 @@ export default function CreateChannelModal() {
                 );
                 return (
                   <button
-                    key={user.userId}
+                    key={user.userId ?? user.id ?? user._id}
                     type="button"
                     onClick={() => toggleMember(user)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left border ${

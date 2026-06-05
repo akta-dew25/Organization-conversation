@@ -10,6 +10,7 @@ import { socket } from "../socket/socket.js";
 export default function ChannelView() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
   const selectedChannelId = useSelector(
     (state) => state.channels.selectedChannelId,
   );
@@ -46,33 +47,69 @@ export default function ChannelView() {
     fetchChatGroup();
     socket.emit("join-group", {
       groupId: id,
+      userId: user?.userId || user?.id,
+      userName: user?.name,
     });
+
+    return () => {
+      socket.emit("leave-group", {
+        groupId: id,
+        userId: user?.userId || user?.id,
+      });
+    };
+  }, [id, user]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const normalizeMessage = (incoming) => {
+      if (!incoming) return null;
+      if (incoming.groupId) return incoming;
+      if (incoming.message?.groupId) return incoming.message;
+      if (incoming.data?.groupId) return incoming.data;
+      if (incoming.message?.data?.groupId) return incoming.message.data;
+      return incoming;
+    };
+
+    const handleReceiveMessage = (rawMessage) => {
+      const newMessage = normalizeMessage(rawMessage);
+      if (!newMessage) return;
+
+      if (String(newMessage.groupId) === String(id)) {
+        setMessages((prev) => [...prev, newMessage]);
+      }
+    };
+
+    const handleUserTyping = ({ userName, groupId }) => {
+      if (String(groupId) === String(id)) {
+        setTypingUser(userName);
+      }
+    };
+
+    const handleUserStopTyping = ({ groupId }) => {
+      if (String(groupId) === String(id)) {
+        setTypingUser("");
+      }
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
+    socket.on("new-message", handleReceiveMessage);
+    socket.on("message", handleReceiveMessage);
+    socket.on("user-typing", handleUserTyping);
+    socket.on("typing", handleUserTyping);
+    socket.on("user-stop-typing", handleUserStopTyping);
+    socket.on("stop-typing", handleUserStopTyping);
+
+    return () => {
+      socket.off("receive-message", handleReceiveMessage);
+      socket.off("new-message", handleReceiveMessage);
+      socket.off("message", handleReceiveMessage);
+      socket.off("user-typing", handleUserTyping);
+      socket.off("typing", handleUserTyping);
+      socket.off("user-stop-typing", handleUserStopTyping);
+      socket.off("stop-typing", handleUserStopTyping);
+    };
   }, [id]);
-
-  useEffect(() => {
-    socket.on("receive-message", (newMessage) => {
-      setMessages((prev) => [...prev, newMessage]);
-    });
-
-    return () => {
-      socket.off("receive-message");
-    };
-  }, []);
-
-  useEffect(() => {
-    socket.on("user-typing", ({ userName }) => {
-      setTypingUser(userName);
-    });
-
-    socket.on("user-stop-typing", () => {
-      setTypingUser("");
-    });
-
-    return () => {
-      socket.off("user-typing");
-      socket.off("user-stop-typing");
-    };
-  }, []);
 
   // if (loading) {
   //   return (
@@ -109,6 +146,17 @@ export default function ChannelView() {
       <MessageInput
         channelId={groupData.groupId}
         refreshGroup={fetchChatGroup}
+        onMessageSent={(newMessage) =>
+          setMessages((prev) => {
+            const exists = prev.some(
+              (msg) =>
+                String(msg._id || msg.id || msg.messageId) ===
+                String(newMessage._id || newMessage.id || newMessage.messageId),
+            );
+            if (exists) return prev;
+            return [...prev, newMessage];
+          })
+        }
       />
     </div>
   );

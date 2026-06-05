@@ -15,7 +15,6 @@ const channelsSlice = createSlice({
       state.channels = action.payload;
     },
     addChannel: (state, action) => {
-      console.log({ state });
       state.channels.unshift(action.payload);
     },
     deleteChannel: (state, action) => {

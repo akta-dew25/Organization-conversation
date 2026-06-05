@@ -8,7 +8,11 @@ import data from "@emoji-mart/data";
 import chatApi from "../api/chatApi";
 import { socket } from "../socket/socket";
 
-export default function MessageInput({ channelId, refreshGroup }) {
+export default function MessageInput({
+  channelId,
+  refreshGroup,
+  onMessageSent,
+}) {
   const user = useSelector((state) => state.auth.user);
 
   const [message, setMessage] = useState("");
@@ -91,16 +95,20 @@ export default function MessageInput({ channelId, refreshGroup }) {
       };
 
       const msg = await chatApi.post("/messages", payload);
-
-      /**
-       * REFRESH GROUP
-       */
-
-      socket.emit("send-message", {
-        groupId: channelId,
-        message: msg.data.message,
-        senderId: user.userId,
-      });
+      const messagePayload = msg.data.data || msg.data;
+      const senderId = user?.userId || user?.id || user?._id;
+      const senderName =
+        user?.name || user?.userName || user?.fullName || "You";
+      const outgoingMessage = {
+        ...messagePayload,
+        senderId,
+        senderName,
+        groupId: messagePayload.groupId || channelId,
+      };
+      socket.emit("send-message", outgoingMessage);
+      if (onMessageSent) {
+        onMessageSent(outgoingMessage);
+      }
       if (refreshGroup) {
         await refreshGroup();
       }

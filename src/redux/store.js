@@ -5,6 +5,7 @@ import messagesReducer from "./slices/messagesSlice.js";
 import groupsReducer from "./slices/groupsSlice.js";
 import uiReducer from "./slices/uiSlice.js";
 import personalReducer from "./slices/personalSlice.js";
+import presenceReducer from "./slices/presenceSlice.js";
 
 const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ const store = configureStore({
     groups: groupsReducer,
     ui: uiReducer,
     personal: personalReducer,
+    presence: presenceReducer,
   },
 });
 

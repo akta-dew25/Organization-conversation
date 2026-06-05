@@ -1,12 +1,28 @@
 import { Info, Users, X } from "lucide-react";
 import { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { openModal } from "../redux/slices/uiSlice";
-import { useDispatch } from "react-redux";
 
 export default function ChannelHeader({ channel, members, refreshGroup }) {
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
   const [showMembers, setShowMembers] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
+  const personalChatTitle = () => {
+    if (channel.groupType !== "personal") {
+      return channel?.name;
+    }
+
+    const otherMember = members.find(
+      (member) =>
+        String(member.userId) !== String(currentUser?.userId) &&
+        String(member.userId) !== String(currentUser?.id),
+    );
+
+    return otherMember?.name || channel?.name || "Personal Chat";
+  };
+
   return (
     <>
       <div className="h-16 border-b border-gray-200 px-6 flex items-center justify-between bg-white">
@@ -15,7 +31,7 @@ export default function ChannelHeader({ channel, members, refreshGroup }) {
             {channel.groupType === "channel" || channel.groupType === "group"
               ? "#"
               : ""}
-            {channel?.name}
+            {personalChatTitle()}
           </h2>
           <p className="text-sm text-gray-500">{channel?.description}</p>
         </div>

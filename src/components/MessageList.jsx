@@ -28,12 +28,25 @@ export default function MessageList({ messages }) {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
-      {messages.map((message) => {
-        const isSender = String(message.senderId) === String(currentUserId);
+      {messages.map((message, index) => {
+        const senderId =
+          message.senderId ||
+          message.sender?.userId ||
+          message.sender?.id ||
+          message.sender?._id;
+        const isSender = String(senderId) === String(currentUserId);
+        const senderName =
+          message.senderName ||
+          message.userName ||
+          message.sender?.name ||
+          message.sender?.userName ||
+          message.sender?.fullName ||
+          "User";
+        const key = message._id || message.id || message.messageId || index;
 
         return (
           <div
-            key={message._id}
+            key={key}
             className={`flex ${isSender ? "justify-end" : "justify-start"}`}
           >
             <div
@@ -57,7 +70,7 @@ export default function MessageList({ messages }) {
                   }`}
                 >
                   <p className="text-xs font-semibold text-gray-700">
-                    {isSender ? "You" : "User"}
+                    {isSender ? "You" : senderName}
                   </p>
 
                   <span className="text-[11px] text-gray-400">

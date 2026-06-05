@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
 import Modal from "../components/Modal.jsx";
 import { Plus, Search, Edit3, Trash2, CheckCircle } from "lucide-react";
 import authApi from "../api/authApi.js";
+import { socket } from "../socket/socket.js";
+import chatApi from "../api/chatApi.js";
+import { setChannels } from "../redux/slices/channelsSlice.js";
+import { setGroups } from "../redux/slices/groupsSlice.js";
+import { setPersonals } from "../redux/slices/personalSlice.js";
+import { removeDeletedUser } from "../redux/slices/authSlice.js";
 
 const initialUsers = [];
 const roles = ["admin", "user"];
@@ -31,6 +38,7 @@ const normalizeUser = (user = {}) => ({
 });
 
 export default function UsersView() {
+  const dispatch = useDispatch();
   const [users, setUsers] = useState(initialUsers);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -222,7 +230,43 @@ export default function UsersView() {
       setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
       setShowDeleteModal(false);
       setUserToDelete(null);
+      // update auth state
       dispatch(removeDeletedUser(userToDelete.id));
+
+      // notify other connected clients that a user was deleted
+      try {
+        socket.emit("user-deleted", { userId: userToDelete.id });
+      } catch (err) {
+        console.log("Failed to emit user-deleted socket event", err);
+      }
+
+      // refresh chat groups to remove deleted user from members
+      try {
+        const { data } = await chatApi.get("/chat-group");
+        const allGroups = data?.data || [];
+        // update slices similar to Sidebar fetch
+        dispatch(
+          setChannels(allGroups.filter((item) => item.groupType === "channel")),
+        );
+        dispatch(
+          setGroups(allGroups.filter((item) => item.groupType === "group")),
+        );
+        // For personals, also ensure deleted user isn't part of personal chats
+        const personals = allGroups.filter(
+          (item) => item.groupType === "personal",
+        );
+        const filteredPersonals = personals.filter((p) => {
+          const members = p.members || [];
+          return !members.some(
+            (m) =>
+              String(m.userId || m.id || m._id) === String(userToDelete.id),
+          );
+        });
+        dispatch(setPersonals(filteredPersonals));
+      } catch (err) {
+        // ignore chat refresh errors
+        console.log("Failed to refresh chat groups after user delete", err);
+      }
     } catch (err) {
       setError(
         err?.response?.data?.message ||
