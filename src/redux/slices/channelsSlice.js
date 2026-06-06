@@ -46,6 +46,7 @@ export const {
   selectChannel,
   setLoading,
   setError,
+  updateUnreadCount,
 } = channelsSlice.actions;
 
 export default channelsSlice.reducer;

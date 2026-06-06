@@ -3,7 +3,12 @@ import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { openModal } from "../redux/slices/uiSlice";
 
-export default function ChannelHeader({ channel, members, refreshGroup }) {
+export default function ChannelHeader({
+  channel,
+  members,
+  refreshGroup,
+  onlineUsers,
+}) {
   const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.user);
   const [showMembers, setShowMembers] = useState(false);

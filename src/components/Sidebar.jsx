@@ -22,6 +22,7 @@ import { tokenService } from "../services/tokenService.js";
 import chatApi from "../api/chatApi.js";
 import { setGroups } from "../redux/slices/groupsSlice.js";
 import { setPersonals } from "../redux/slices/personalSlice.js";
+import { socket } from "../socket/socket";
 
 export default function Sidebar({ isOpen }) {
   const [orgData, setOrgData] = useState(null);
@@ -40,6 +41,7 @@ export default function Sidebar({ isOpen }) {
   const [personalLimit, setPersonalLimit] = useState(5);
 
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  // Sidebar.jsx or ChannelList.jsx
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -54,6 +56,7 @@ export default function Sidebar({ isOpen }) {
   const personal = useSelector((state) => state.personal.personals || []);
 
   const organization = useSelector((state) => state.auth.organization);
+
   /**
    * FETCH ORGANIZATION
    */

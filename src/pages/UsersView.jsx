@@ -9,6 +9,7 @@ import { setChannels } from "../redux/slices/channelsSlice.js";
 import { setGroups } from "../redux/slices/groupsSlice.js";
 import { setPersonals } from "../redux/slices/personalSlice.js";
 import { removeDeletedUser } from "../redux/slices/authSlice.js";
+import { useSelector } from "react-redux";
 
 const initialUsers = [];
 const roles = ["admin", "user"];
@@ -18,8 +19,10 @@ const normalizeUser = (user = {}) => ({
   id: user.userId || user.id || Date.now(),
   name: user.name || "",
   email: user.email || "",
-  role: (user.role || "user").toLowerCase(),
-  isActive: user.role === "Admin" ? "Active" : user.isActive,
+
+  role: user.role || "USER",
+
+  isActive: user.role === "ADMIN" ? "Active" : user.isActive,
 
   joined:
     user.joined || user.Joind || user.Joined
@@ -49,11 +52,13 @@ export default function UsersView() {
   const [formValues, setFormValues] = useState({
     name: "",
     email: "",
-    role: "user",
+    // role: "user",
     isActive: "Invited",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const currentUser = useSelector((state) => state.auth.user);
   const [success, setSuccess] = useState("");
 
   const fetchUsers = async () => {
@@ -105,6 +110,11 @@ export default function UsersView() {
   );
 
   const openCreateModal = () => {
+    if (currentUser?.role?.name === "USER") {
+      return (
+        <div className="p-6">You don't have permission to manage users.</div>
+      );
+    }
     setModalMode("create");
     setActiveUser(null);
     setFormValues({
@@ -153,7 +163,7 @@ export default function UsersView() {
         const { data } = await authApi.put(`/users/${activeUser.id}`, {
           name: formValues.name,
           email: formValues.email,
-          role: formValues.role,
+          // role: formValues.role,
           isActive: formValues.isActive,
         });
 
@@ -177,7 +187,8 @@ export default function UsersView() {
         const { data } = await authApi.post("/users", {
           name: formValues.name,
           email: formValues.email,
-          role: formValues.role,
+          // role: formValues.role,
+          role: "USER",
           isActive: formValues.isActive,
         });
         alert(data.emailMsg);
@@ -209,6 +220,7 @@ export default function UsersView() {
           err.message ||
           "Failed to save user. Please try again.",
       );
+      setIsModalOpen(false);
     } finally {
       setLoading(false);
     }
@@ -451,7 +463,7 @@ export default function UsersView() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Role
                 </label>
@@ -467,7 +479,7 @@ export default function UsersView() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Status

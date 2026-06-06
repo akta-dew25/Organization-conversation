@@ -208,6 +208,7 @@ export default function CreateChannelModal() {
       console.log(error);
 
       setError(error?.response?.data?.message || "Failed to create chat group");
+      dispatch(closeModal("createChannel"));
     } finally {
       setLoading(false);
     }

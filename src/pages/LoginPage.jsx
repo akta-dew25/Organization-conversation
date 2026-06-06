@@ -58,6 +58,7 @@ export default function LoginPage() {
         email: formData.email,
         // avatar: data.user?.avatar || "",
         isActive: data.data.isActive,
+        role: data.data.role,
         organization: {
           id: orgId,
           name: data.organization?.name || "Organization",

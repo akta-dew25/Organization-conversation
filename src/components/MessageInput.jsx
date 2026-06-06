@@ -6,13 +6,9 @@ import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 
 import chatApi from "../api/chatApi";
-import { socket } from "../socket/socket";
+import { socket } from "../socket/socket.js";
 
-export default function MessageInput({
-  channelId,
-  refreshGroup,
-  onMessageSent,
-}) {
+export default function MessageInput({ channelId, refreshGroup }) {
   const user = useSelector((state) => state.auth.user);
 
   const [message, setMessage] = useState("");
@@ -57,17 +53,23 @@ export default function MessageInput({
   const handleTyping = (e) => {
     setMessage(e.target.value);
 
-    socket.emit("typing", {
-      groupId: channelId,
-      userName: user.name,
-    });
+    try {
+      socket.emit("typing", {
+        groupId: channelId,
+        userName: user.name,
+      });
+    } catch (err) {
+      // socket may not be connected
+    }
 
     clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
-      socket.emit("stop-typing", {
-        groupId: channelId,
-      });
+      try {
+        socket.emit("stop-typing", { groupId: channelId });
+      } catch (err) {
+        // ignore
+      }
     }, 1000);
   };
 
@@ -99,24 +101,25 @@ export default function MessageInput({
       const senderId = user?.userId || user?.id || user?._id;
       const senderName =
         user?.name || user?.userName || user?.fullName || "You";
+      const clientMessageId =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const outgoingMessage = {
         ...messagePayload,
         senderId,
         senderName,
         groupId: messagePayload.groupId || channelId,
+        clientMessageId,
       };
-      socket.emit("send-message", outgoingMessage);
-      if (onMessageSent) {
-        onMessageSent(outgoingMessage);
-      }
-      if (refreshGroup) {
-        await refreshGroup();
-      }
+
       setMessage("");
 
       setSelectedFile(null);
 
       setShowEmojiPicker(false);
+      socket.emit("stop-typing", {
+        groupId: channelId,
+      });
     } catch (error) {
       console.log(error);
     } finally {
