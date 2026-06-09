@@ -76,21 +76,34 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const payload = {
-        org: {
+      const payload = new FormData();
+
+      payload.append(
+        "org",
+        JSON.stringify({
           name: formData.orgName,
           domain: formData.orgDomain,
-          logo: logoFile?.name || formData.logo || "logo",
-        },
-        user: {
+        }),
+      );
+
+      payload.append(
+        "user",
+        JSON.stringify({
           name: formData.fullName,
           email: formData.email,
           password: formData.password,
+        }),
+      );
+
+      if (logoFile) {
+        payload.append("logo", logoFile);
+      }
+
+      const { data } = await authApi.post("/auth/register", payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
         },
-      };
-
-      const { data } = await authApi.post("/auth/register", payload);
-
+      });
       dispatch(
         registerSuccess({
           user: {

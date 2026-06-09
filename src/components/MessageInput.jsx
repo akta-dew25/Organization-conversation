@@ -84,46 +84,36 @@ export default function MessageInput({ channelId, refreshGroup }) {
     }
 
     try {
-      // setLoading(true);
+      setLoading(true);
 
-      /**
-       * TEXT MESSAGE
-       */
-      const payload = {
-        groupId: channelId,
-        message,
-        messageType: selectedFile ? "file" : "text",
-        attachments: [],
-      };
+      const formData = new FormData();
 
-      const msg = await chatApi.post("/messages", payload);
-      const messagePayload = msg.data.data || msg.data;
-      const senderId = user?.userId || user?.id || user?._id;
-      const senderName =
-        user?.name || user?.userName || user?.fullName || "You";
-      const clientMessageId =
-        window.crypto?.randomUUID?.() ||
-        `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      const outgoingMessage = {
-        ...messagePayload,
-        senderId,
-        senderName,
-        groupId: messagePayload.groupId || channelId,
-        clientMessageId,
-      };
+      formData.append("groupId", channelId);
+      formData.append("message", message);
+
+      formData.append("messageType", selectedFile ? "file" : "text");
+
+      if (selectedFile) {
+        formData.append("attachments", selectedFile);
+      }
+
+      const msg = await chatApi.post("/messages", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       setMessage("");
-
       setSelectedFile(null);
-
       setShowEmojiPicker(false);
+
       socket.emit("stop-typing", {
         groupId: channelId,
       });
     } catch (error) {
       console.log(error);
     } finally {
-      // setLoading(false);
+      setLoading(false);
     }
   };
 

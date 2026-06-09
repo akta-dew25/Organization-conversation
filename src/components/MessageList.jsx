@@ -25,7 +25,6 @@ export default function MessageList({ messages }) {
       </div>
     );
   }
-
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
       {messages.map((message, index) => {
@@ -90,9 +89,27 @@ export default function MessageList({ messages }) {
                   }`}
                 >
                   {message.messageType === "file" ? (
-                    <div className="flex items-center gap-2">
-                      <span>📎</span>
-                      <span>{message.message}</span>
+                    <div>
+                      {message.attachments?.map((file, index) => (
+                        <div key={index}>
+                          {file.mimeType?.startsWith("image/") ? (
+                            <img
+                              src={`http://localhost:8000${file.fileUrl}`}
+                              alt={file.fileName}
+                              className="max-w-xs rounded-lg mt-2"
+                            />
+                          ) : (
+                            <a
+                              href={`http://localhost:8000${file.fileUrl}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-500 underline"
+                            >
+                              📎 {file.fileName}
+                            </a>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     message.message
